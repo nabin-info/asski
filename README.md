@@ -5,8 +5,7 @@ As a side-effect, you can learn a lot about unicode experimenting with things li
 
 I wanna thank some great places that made this all possible:
 
-    http://unicode.org/versions/Unicode9.0.0/
-
-    https://en.wikipedia.org/wiki/Plane_(Unicode)
+* [unicode.org](http://unicode.org/versions/Unicode9.0.0/)
+* [wikipedia.org](https://en.wikipedia.org/wiki/Plane_(Unicode))
     
 Please make pull requests and lets keep it funky.
