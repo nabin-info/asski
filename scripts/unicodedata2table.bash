@@ -8,7 +8,7 @@ PROG="${0##*/}"
 DATA="${1}"
 
 [[ -r "${DATA}" ]] || {
-  printf '%s\n' "Usage: $PROG /path/to/UnicodeData.txt"
+  printf '%s\n' "Usage: $PROG /path/to/UnicodeData.txt" >&2
   exit 1 
 }
  
