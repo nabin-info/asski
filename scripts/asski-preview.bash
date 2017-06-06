@@ -1,7 +1,12 @@
 #!/bin/bash
-: ${PREFIX:=~/src/nabin-info/asski.git}
-: ${ASSKIS:=${PREFIX}/scripts}
-cd "${ASSKIS}" 
+[[ -n "${ASSKIS}" ]] || {
+	ASSKIS="$(which asski.ff01)"
+	ASSKIS="$(basename "${ASSKIS}")"
+}
+cd "${ASSKIS}" && [[ -e asski.ff01 ]] || {
+	printf >&2 "FATAL: could not find asski.ff01 in your PATH\n"
+	exit 2
+}
 
 read -r msg
 

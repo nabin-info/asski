@@ -1,14 +1,14 @@
 #!/bin/bash
 #
-#     http://www.unicode.org/Public/UCD/latest/ucd/UnicodeData.txt
 #
-printf -v OFS "${OFS:-\t}"
-printf -v ORS "${ORS:-\n}"
+printf -v OFS "${OFS-\t}"
+printf -v ORS "${ORS-\n}"
 PROG="${0##*/}"
 DATA="${1}"
 
 [[ -r "${DATA}" ]] || {
-  printf '%s\n' "Usage: $PROG /path/to/UnicodeData.txt" >&2
+  printf >&2 '%s\n' "Usage: $PROG /path/to/UnicodeData.txt" \
+  '    see http://www.unicode.org/Public/UCD/latest/ucd/UnicodeData.txt'
   exit 1 
 }
  
