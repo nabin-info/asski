@@ -44,14 +44,16 @@ utf8encode () {
 }
 
 render_range () {
-    local -i i i0=$1 iN=$2 iI=$3
+    local -i i0=$(( ${1/U+/0x} ))
+    local -i iN=$(( ${2/U+/0x} ))
+    local -i iI=$(( ${3/U+/0x} ))
     #IFS=: read -r -- i0 iN iI <<< "$1"   ;# start:end:incr 
       
     (( ${i0:-1} >= 0 )) && {
-        (( iN = (iN > i0)? iN : i0 ))
+        (( iN = (iN > i0)? iN : (i0 + 1) ))
         (( iI = (iI >  0)? iI : 1 )) 
-        printf '\n%s is U+%04X to U+%04X incr 0x%X ' $1 $i0 $iN $iI >&2
-        printf '  /  %- 7d to %-8d incr %d\n' $i0 $iN $iI >&2
+        printf '\n%s is 0x%04X:0x+%04X:%X' $1 $i0 $iN $iI >&2
+        printf ' (%d to %d incr %d)\n' $i0 $iN $iI >&2
         local table=''
         for (( i = i0; i < iN; i += iI )); do 
             (( i < 1 )) && { 
@@ -96,6 +98,8 @@ exit 1
 
 main () {
     [[ $# -lt 1 ]] && usage
+    
+    exho "$@"
 
     for range in "$@" ; do
         # TODO Convert/Sanitize Arguments Better
@@ -110,13 +114,14 @@ main () {
                 
             ;;
             *:*%*) printf '\nUNIMPLEMENTED "%%": ignoring %s\n' "${range}" >&2 
+
             ;;
             *:*:*) render_range ${range//:/ } ;;
               *:*) render_range ${range//:/ } ;;
                 *) render_range ${range//:/ } ;;
         esac
-        exit 0
     done
+    exit 0
 }
 
 
