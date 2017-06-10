@@ -15,7 +15,7 @@ else
 	printf -v msg '%s ' "$@"
 fi
 
-for a in $(ls -1 asski.* | sort -V) ; do
+for a in $(ls -1 asski.* | sort -n) ; do
 	printf '%s:\t' "$a"
 	${a} <<< "$msg"
 done

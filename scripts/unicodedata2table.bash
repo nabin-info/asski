@@ -14,7 +14,7 @@ DATA="${1:-/usr/share/unicode-character-database/UnicodeData.txt}"
 
 [[ -r "${DATA}" ]] || {
   printf >&2 '%s\n' "Usage: $PROG /path/to/UnicodeData.txt" \
-  'The latest UnicodeData.txt file can be downloaded from:'
+  'The latest UnicodeData.txt file can be downloaded from:' \
   '    http://www.unicode.org/Public/UCD/latest/ucd/UnicodeData.txt'
   exit 1 
 }
