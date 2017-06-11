@@ -1,6 +1,4 @@
 #!/bin/bash
-# Nearly all of this script was taken from stack-overflow
-# Isn't that fast_chr something?
 printf -v OFS "${OFS:-\t}"
 printf -v ORS "${ORS:-\n}"
 
