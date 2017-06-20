@@ -1,4 +1,5 @@
 #!/bin/bash
+# Isn't that fast_chr something?
 printf -v OFS "${OFS:-\t}"
 printf -v ORS "${ORS:-\n}"
 
@@ -50,8 +51,8 @@ render_range () {
     (( ${i0:-1} >= 0 )) && {
         (( iN = (iN > i0)? iN : (i0 + 1) ))
         (( iI = (iI >  0)? iI : 1 )) 
-        printf '\n%s is 0x%04X:0x+%04X:%X' $1 $i0 $iN $iI >&2
-        printf ' (%d to %d incr %d)\n' $i0 $iN $iI >&2
+        printf '\nU+%04X to U+%04X every U+%X' $i0 $iN $iI >&2
+        printf '\n%6d to %6d every %6d\n' $i0 $iN $iI >&2
         local table=''
         for (( i = i0; i < iN; i += iI )); do 
             (( i < 1 )) && { 
@@ -94,26 +95,45 @@ END_OF_USAGE
 exit 1
 }
 
+render_chunks () {
+    local  n
+    for (( i = $1, n = $3 ; $2 > i ; i += (n = $3) )) 
+    do 
+        render_range $i $((i+n)) 1
+    done
+}
+
 main () {
     [[ $# -lt 1 ]] && usage
     
-    exho "$@"
+    local x i n
 
     for range in "$@" ; do
         # TODO Convert/Sanitize Arguments Better
         [[ -z "$1" ]] && continue
         case ${range} in 
-            @*) REPLY=INIT CB_FUNCTION=${range#@}
+            @*) 
+                REPLY=INIT CB_FUNCTION=${range#@}
                 while ${CB_FUNCTION} && [[ "$REPLY" != "NULL" ]] ; do
                     render_range ${REPLY//:/ } 
                 done 
             ;;
-            *:*/*) printf '\nUNIMPLEMENTED "/": ignoring %s\n' "${range}" >&2 
-                
-            ;;
-            *:*%*) printf '\nUNIMPLEMENTED "%%": ignoring %s\n' "${range}" >&2 
 
+            *:*/*) 
+                R=( ${range//[:\/]/ } )
+                (( R[2] = (R[1] - R[0]) / R[2] )) 
+                for (( i = R[0], n = R[2] ; R[1] > i ; (n = R[2]) )) 
+                do 
+                    render_range $i $((i+n)) 1
+                    (( i += n ))
+                done
             ;;
+
+            *:*%*) 
+                R=( ${range//[:%]/ } )
+                render_chunks "${R[@]}"
+            ;;
+            
             *:*:*) render_range ${range//:/ } ;;
               *:*) render_range ${range//:/ } ;;
                 *) render_range ${range//:/ } ;;
