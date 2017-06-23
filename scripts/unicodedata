@@ -1,85 +1,125 @@
 #!/bin/bash
 #
-#
-: "${OFS:=\t}" "${ORS:=\n}"
+
 PROG="${0##*/}"
+UPDATE="${UPDATE:+1}"
+: "${DATA:=$HOME/.unicode.data}"
+: "${MODE:=tab}"
+: "${OFS:=\t}" 
+: "${ORS:=\n}"
 
-set | grep 'O[RF]S'
-
-case $1 in 
-  --compose) MODE=${1#--} ; shift ;;
-  --switch)  MODE=${1#--} ; shift ;;
-  --tab)     MODE=${1#--} ; shift ;;
-  --)       shift ;;
-   *) true ;;
-esac
-MODE="${MODE:-tab}"
-DATA="${HOME}/.unicode.data"
-CASH="${HOME}/.unicode.${MODE}"
-for data in \
-  "$DATA" \
-  ./UnicodeData.txt \
-  "${HOME}/share/UnicodeData.txt" \
-  /usr/share/unicode-character-database/UnicodeData.txt \
-  /usr/share/UnicodeData.txt \
-  /usr/lib/UnicodeData.txt
-do 
-    [[ -r "$data" ]] && {
-    printf >&2 'INFO: caching unicode data file: %s -> %s\n' "${data}" "${DATA}"
-    [[ ${data} = ${DATA} ]] \
-      && cmp -s "$data" "$DATA" \
-      || cp -iv "$data" "$DATA" 
-    break
-  }
-done
-
-[[ -r "${DATA}" ]] || {
-  printf >&2 '%s\n' \
-      "Usage: $PROG [MODE] [regexp]" \
-      'UnicodeData.txt is provided with every update to unicode standard' \
-      'and is expected (or, if found, will be cached) in '
-      "    ${DATA}" \
-      'Archlinux users may obtain via:' \
-      '    pacman -S unicode-character-database' \
-      'The general solution is to manually download the latest version via:' \
-      '    curl -Lo "'"${DATA}"'" "http://www.unicode.org/Public/UCD/latest/ucd/UnicodeData.txt"'
-  exit 1 
+main () {
+    parse_cmdline "$@"
+    update_data 
+    [[ -r "${DATA}" ]] || {
+        usage
+    }
+    update_cache
+    print_cache
 }
 
+parse_cmdline () {
+    while true ; do
+    case $1 in 
+    --tab)     MODE=${1#--} ; shift ;;
+    --switch)  MODE=${1#--} ; shift ;;
+    --update)  UPDATE=1     ; shift ;;
+    --) shift ;;
+     *) break ;;
+    esac
+    done
+}
 
-declare codepoint description character
-declare -a M 
-declare -i N
-# main()
-[[ "${DATA}" -nt "${CASH}" ]] && { 
-  printf >&2 'INFO: using unicode data file: %s\n' "${DATA}"
-  while IFS=\; read -r -a M
-  do 
-      [[ ${M[0]} == *#* ]] && continue
-      codepoint="${M[0]}"
-      description="${M[10]} ${M[1]}"
-      description="${description##[[:space:]]}"
-      description="${description%%[[:space:]]}"
+update_data () {  
+    # find suitable UnicodeData.txt
+    for data in \
+            "${DATA}" \
+            ./UnicodeData.txt \
+            "${HOME}/share/UnicodeData.txt" \
+            "${PREFIX}/share/UnicodeData.txt" \
+            /usr/share/UnicodeData.txt \
+            /usr/share/unicode-character-database/UnicodeData.txt \
+            /usr/lib/UnicodeData.txt
+        do 
+        if [[ -r "$data" ]] ; then
 
-      # Unicode Rendering often gets these classes wrong.
-      printf -v character "\U${codepoint}"
-      character="${character//[![:print:]]/}"
-      #character="${character//[[:space:][:blank:][:cntrl:]]/}"
+            if [[ ${data} = ${DATA} ]] ; then
+            # UnicodeData.txt cache already exists
+                if [[ ${UPDATE} -eq 1 ]]
+                then continue  ;# force finding new UnicodeData.txt
+                else break     ;# UnicodeData.txt is already cached
+                fi
+            fi
 
-      if [[ "${MODE}" = "tab" ]]; then
-        printf "%-12s\t%s\t%s\n" \
-            "U+${codepoint}" "${character}" "${description}"
+            if [[ ${UPDATE} -eq 1 ]] || [[ "$data" -nt "$DATA" ]] ; then
+                # UnicodeData.txt needs to be updated
+                printf >&2 'INFO: caching unicode data: %s -> %s\n' "${data}" "${DATA}"
+                cp -v -i "$data" "$DATA" 
+                break
+            fi
+        fi
+    done
+    CASH="${HOME}/.unicode.${MODE}"
+}
 
-      elif [[ "${MODE}" = "switch" ]]; then
-        printf '\tcase 0x%s: return("%s");\n' \
-            "${codepoint}" "${description}"
+usage () {
+    printf >&2 '%s\n' \
+    "Usage: $PROG [--switch|--tab] [--update] [regexp]" " " \
+    'UnicodeData.txt is provided with every update to unicode standard' \
+    "and is required by ${PROG}. It will be cached in" \
+    "    ${DATA}" \
+    'Archlinux users may obtain via:' \
+    '    pacman -S unicode-character-database' \
+    'The general solution is to manually download the latest version via:' \
+    '    curl -Lo "'"${DATA}"'" "http://www.unicode.org/Public/UCD/latest/ucd/UnicodeData.txt"'
+    exit 1 
+}
 
-      else
+print_cache () {
+    printf >&2 'INFO: reading from cache: %s\n' "${CASH}"
+    { 
+      tr '\n' '\v' \
+      | sed -e 's#\t#'"$OFS"'#g' \
+            -e 's#\v#'"$ORS"'#g' 
+    } < "${CASH}"
+}
+
+update_cache () {
+    local codepoint description character
+    local -a M 
+    local -i N
+    [[ "${DATA}" -nt "${CASH}" ]] || [[ ${UPDATE} -eq 1 ]] && { 
+        printf >&2 'INFO: using locale settings:\n' 
+        locale | sed 's/^/\t/' >&2
+        printf >&2 'INFO: using unicode data file: %s\n' "${DATA}"
+        while IFS=\; read -r -a M
+        do 
+        #[[ ${#M[@]} -eq 14 ]] || [[ ${#M[@]} -eq 15 ]] || continue
+        [[ ${M[0]} == *#* ]] && continue
+        codepoint="${M[0]}"
+        description="${M[10]} ${M[1]}"
+        description="${description##[[:space:]]}"
+        description="${description%%[[:space:]]}"
+
+        # Unicode Rendering often gets these classes wrong.
+        printf -v character "\U${codepoint}"
+        character="${character//[![:print:]]/}"
+        #character="${character//[[:space:][:blank:][:cntrl:]]/}"
+
+        if [[ "${MODE}" = "tab" ]]; then
+            printf "%-12s\t%s\t%s\n" \
+                "U+${codepoint}" "${character}" "${description}"
+
+        elif [[ "${MODE}" = "switch" ]]; then
+            printf '\tcase 0x%s: return("%s");\n' \
+                "${codepoint}" "${description}"
+
+        else
         printf >&2 "FATAL: unknown MODE: %s\n" "$MODE" 
         exit 1
-      fi
-  done  < "${DATA}" 
-} > "${CASH}"
+        fi
+        done  < "${DATA}" 
+    } > "${CASH}"
+}
 
-printf >&2 'INFO: reading from cache: %s\n' "${CASH}"
-sed -e 's#\t#'"$OFS"'#g' -e 's#$#'"$ORS"'#g' "${CASH}"
+main "$@"
